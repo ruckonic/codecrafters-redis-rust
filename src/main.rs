@@ -6,16 +6,16 @@ fn main() {
 
     for stream in listener.incoming() {
         match stream {
-            Ok(mut _stream) => {
+            Ok(mut _stream) => loop {
                 let mut buffer = [0; 1024];
-                _stream.read(&mut buffer).unwrap();
+                let read_bytes = _stream.read(&mut buffer).expect("Error reading bites");
 
-                let commands = String::from_utf8_lossy(&buffer);
+                if read_bytes == 0 {
+                    break;
+                }
 
-                commands
-                    .matches("ping")
-                    .for_each(|_| ping(&mut _stream).unwrap());
-            }
+                ping(&mut _stream).unwrap();
+            },
             Err(e) => {
                 eprintln!("error: {}", e);
             }

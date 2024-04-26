@@ -1,3 +1,6 @@
+use std::collections::HashMap;
+use std::sync::{Arc,Mutex};
+
 use super::errors::Error;
 use super::types::RespType;
 
@@ -6,6 +9,8 @@ use super::types::RespType;
 pub enum Command {
     Ping { value: Option<String> },
     Echo { value: String },
+    Set { key: String, value: String },
+    Get { key: String },
 }
 
 impl Command {
@@ -55,6 +60,45 @@ impl Command {
                                     }
                                 })   
                             },
+
+                            "SET" => {
+                                let is_set_command_valid = commands_len > 2 && commands_len < 4;
+                                
+                                if !is_set_command_valid {
+                                    return Err(Error::Invalid);
+                                }
+
+                                let key = match resp_values_iter.next() {
+                                    Some(RespType::BulkString { len: _, value }) => value.to_string(),
+                                    _ => return Err(Error::Invalid),
+                                };
+
+                                let value = match resp_values_iter.next() {
+                                    Some(RespType::BulkString { len: _, value }) => value.to_string(),
+                                    _ => return Err(Error::Invalid),
+                                };
+
+                                Ok(Command::Set {
+                                    key,
+                                    value,
+                                })
+                            },
+                            "GET" => {
+                                let is_get_command_valid = commands_len > 1 && commands_len < 3;
+                                
+                                if !is_get_command_valid {
+                                    return Err(Error::Invalid);
+                                }
+
+                                let key = match resp_values_iter.next() {
+                                    Some(RespType::BulkString { len: _, value }) => value.to_string(),
+                                    _ => return Err(Error::Invalid),
+                                };
+
+                                Ok(Command::Get {
+                                    key,
+                                })
+                            },
                             _ => return Err(Error::Invalid),
                         }
                     }
@@ -66,7 +110,7 @@ impl Command {
         }
     }
 
-    pub fn execute(&self) -> String {
+    pub fn execute(&self, store: Arc<Mutex<HashMap<String, String>>>) -> String {
         match self {
             Command::Ping { value } => {
                 let response = match value {
@@ -78,6 +122,21 @@ impl Command {
             },
             Command::Echo { value } => {
                 return  RespType::SimpleString { value: value.to_string() }.to_string();
+            },
+            Command::Set { key, value } => {
+                store.lock().unwrap().insert(key.to_string(), value.to_string());
+                return  RespType::SimpleString { value: "OK".to_string() }.to_string();
+            },
+            Command::Get { key } => {
+                let val = store.lock().unwrap();
+                let val = val.get(key);
+
+                if let Some(v) = val {
+                    return RespType::BulkString { len: v.len(), value: v.to_string() }.to_string();
+                }
+
+                
+                return RespType::BulkString { len: 0, value: "".to_string() }.to_string();
             },
         }
     }

@@ -18,7 +18,11 @@ impl RespType {
   pub fn to_string(&self) -> String {
       match self {
           RespType::BulkString { len, value } => {
-              format!("${}\r\n{}\r\n", len, value)
+            if *len == 0 {
+                return "$-1\r\n".to_string();
+            }
+            
+            return  format!("${}\r\n{}\r\n", len, value)
           },
           RespType::SimpleString { value } => {
               format!("+{}\r\n", value)

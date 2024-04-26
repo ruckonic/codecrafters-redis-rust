@@ -4,7 +4,9 @@ use resp::types::RespType;
 use resp::command::Command;
 
 use core::result::Result;
-use std::borrow::Cow;
+use std::collections::HashMap;
+use std::sync::Mutex;
+use std::{borrow::Cow, sync::Arc};
 use std::io::Error;
 use std::net::SocketAddr;
 use tokio::{
@@ -15,6 +17,7 @@ use tokio::{
 #[tokio::main]
 async fn main() -> Result<(), Error> {
      let listener = TcpListener::bind("127.0.0.1:6379").await?;
+     let store = Arc::new(Mutex::new(HashMap::<String, String>::new()));
 
      loop {
          let stream: Result<(TcpStream, SocketAddr), Error> = listener.accept().await;
@@ -22,8 +25,10 @@ async fn main() -> Result<(), Error> {
          match stream {
              Ok((mut stream, _)) => {
                  println!("New connection");
+                 let store = store.clone();
+
                  let _ = tokio::spawn(async move {
-                     process_incoming_connections(&mut stream).await.unwrap();
+                     process_incoming_connections(&mut stream, store).await.unwrap();
                  });
              }
              Err(e) => {
@@ -33,7 +38,7 @@ async fn main() -> Result<(), Error> {
      }
 }
 
-async fn process_incoming_connections(stream: &mut TcpStream) -> Result<(), Error> {
+async fn process_incoming_connections(stream: &mut TcpStream, store: Arc<Mutex<HashMap<String, String>>>) -> Result<(), Error> {
     loop {
         let mut buffer: [u8; 1024] = [0; 1024];
         let bits_len: usize = stream.read(&mut buffer).await?;
@@ -51,7 +56,7 @@ async fn process_incoming_connections(stream: &mut TcpStream) -> Result<(), Erro
         if command.is_err() {
             response = "-ERR unknown command\r\n".to_string();
         } else {
-            response = command.unwrap().execute(); 
+            response = command.unwrap().execute(store.clone()); 
         } 
 
         write(stream, response.as_bytes()).await?;

@@ -1,44 +1,50 @@
+mod commands;
 mod resp;
+mod types;
 
-use resp::types::RespType;
-use resp::command::Command;
+use types::store::Store;
 
 use core::result::Result;
 use std::collections::HashMap;
-use std::sync::Mutex;
-use std::{borrow::Cow, sync::Arc};
 use std::io::Error;
 use std::net::SocketAddr;
+use std::sync::Mutex;
+use std::{borrow::Cow, sync::Arc};
 use tokio::{
     io::{AsyncReadExt, AsyncWriteExt},
     net::{TcpListener, TcpStream},
 };
 
+use crate::commands::Command;
+use crate::resp::types::RespType;
+
 #[tokio::main]
 async fn main() -> Result<(), Error> {
-     let listener = TcpListener::bind("127.0.0.1:6379").await?;
-     let store = Arc::new(Mutex::new(HashMap::<String, String>::new()));
+    let listener = TcpListener::bind("127.0.0.1:6379").await?;
+    let store: Store = Arc::new(Mutex::new(HashMap::<String, String>::new()));
 
-     loop {
-         let stream: Result<(TcpStream, SocketAddr), Error> = listener.accept().await;
+    loop {
+        let stream: Result<(TcpStream, SocketAddr), Error> = listener.accept().await;
 
-         match stream {
-             Ok((mut stream, _)) => {
-                 println!("New connection");
-                 let store = store.clone();
+        match stream {
+            Ok((mut stream, _)) => {
+                println!("New connection");
+                let store = store.clone();
 
-                 let _ = tokio::spawn(async move {
-                     process_incoming_connections(&mut stream, store).await.unwrap();
-                 });
-             }
-             Err(e) => {
-                 println!("err: {}", e);
-             }
-         }
-     }
+                let _ = tokio::spawn(async move {
+                    process_incoming_connections(&mut stream, store)
+                        .await
+                        .unwrap();
+                });
+            }
+            Err(e) => {
+                println!("err: {}", e);
+            }
+        }
+    }
 }
 
-async fn process_incoming_connections(stream: &mut TcpStream, store: Arc<Mutex<HashMap<String, String>>>) -> Result<(), Error> {
+async fn process_incoming_connections(stream: &mut TcpStream, store: Store) -> Result<(), Error> {
     loop {
         let mut buffer: [u8; 1024] = [0; 1024];
         let bits_len: usize = stream.read(&mut buffer).await?;
@@ -48,18 +54,34 @@ async fn process_incoming_connections(stream: &mut TcpStream, store: Arc<Mutex<H
         }
 
         let input: Cow<'_, str> = String::from_utf8_lossy(&buffer);
-        let resp_type = RespType::from_str(input.to_string()).unwrap();
+        println!("Received:\n {input}");
+        let resp_type = RespType::try_from(input.to_string()).unwrap();
+
+        let command = Command::try_from(resp_type);
         let response: String;
-        
-        let command = Command::from_resp(resp_type);
 
-        if command.is_err() {
-            response = "-ERR unknown command\r\n".to_string();
-        } else {
-            response = command.unwrap().execute(store.clone()); 
-        } 
+        match command {
+            Ok(comm) => {
+                let command = comm.create_command();
 
-        write(stream, response.as_bytes()).await?;
+                match command {
+                    Ok(mut command_executable) => {
+                        let resp = command_executable.execute(&mut store.clone());
+                        response = resp.to_string();
+                    }
+                    Err(err) => {
+                        let resp: RespType = err.into();
+                        response = resp.to_string();
+                    }
+                }
+            }
+            Err(err) => {
+                let resp: RespType = err.into();
+                response = resp.to_string();
+            }
+        }
+
+        write(stream, response.to_string().as_bytes()).await?;
     }
 
     Ok(())

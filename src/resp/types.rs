@@ -8,6 +8,7 @@ pub enum RespType {
     SimpleString { value: String },
     Array { len: usize, values: Vec<RespType> },
     SimpleError(Error),
+    Null,
 }
 
 impl TryFrom<String> for RespType {
@@ -58,6 +59,9 @@ impl ToString for RespType {
             }
             RespType::SimpleError(err) => {
                 format!("-{}\r\n", err.to_string())
+            }
+            RespType::Null => {
+                "_\r\n".to_string()
             }
         }
     }

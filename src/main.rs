@@ -54,7 +54,6 @@ async fn process_incoming_connections(stream: &mut TcpStream, store: Store) -> R
         }
 
         let input: Cow<'_, str> = String::from_utf8_lossy(&buffer);
-        println!("Received:\n {input}");
         let resp_type = RespType::try_from(input.to_string()).unwrap();
 
         let command = Command::try_from(resp_type);
@@ -91,3 +90,4 @@ async fn write(stream: &mut TcpStream, str: &[u8]) -> Result<(), Error> {
     stream.write(str).await?;
     Ok(())
 }
+

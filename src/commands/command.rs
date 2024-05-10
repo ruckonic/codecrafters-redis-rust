@@ -1,6 +1,8 @@
 use super::resp_command::RESPCommand;
 use super::Echo;
+use super::Get;
 use super::Ping;
+use super::Set;
 
 use crate::resp::errors::Error;
 use crate::resp::types::RespType;
@@ -30,6 +32,16 @@ impl Command {
 
                 Ok(Box::new(ping))
             }
+            "set" => {
+                let set = Set { args };
+
+                Ok(Box::new(set))
+            }
+            "get" => {
+                let get = Get { args };
+
+                Ok(Box::new(get))
+            }
             _ => Err(Error::UnknownCommand {
                 command: self.0.clone(),
             }),
@@ -40,6 +52,7 @@ impl Command {
 impl TryFrom<RespType> for Command {
     type Error = Error;
 
+    // TODO: Refactor this function
     fn try_from(value: RespType) -> Result<Self, Self::Error> {
         match value {
             RespType::Array {

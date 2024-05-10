@@ -21,7 +21,7 @@ impl RESPMinMaxArgs for Set {
     }
 
     fn max_args(&self) -> usize {
-        3
+        2
     }
 
     fn args_len(&self) -> usize {
@@ -67,3 +67,67 @@ impl RESPCommand for Set {
         };
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::sync::Mutex;
+    use std::collections::HashMap;
+
+    fn crate_store() -> Store {
+        Store::new(Mutex::new(HashMap::<String, String>::new()))
+    }
+
+    #[test]
+    fn set_command() {
+        let mut store =  crate_store();
+
+        let mut set = Set {
+            args: vec!["key".to_string(), "value".to_string()],
+        };
+
+        let response = set.execute(&mut store);
+
+        assert_eq!(response, RespType::SimpleString {
+            value: "OK".to_string(),
+        });
+
+        let store = store.lock().unwrap();
+        let value = store.get("key");
+
+
+        assert_eq!(value, Some(&"value".to_string()));
+    }
+
+    #[test]
+    fn min_args() {
+        let mut store =  crate_store();
+
+        let mut set = Set {
+            args: vec!["key".to_string()],
+        };
+
+        let response = set.execute(&mut store);
+
+        assert_eq!(response, RespType::SimpleError(Error::WrongNumberOfArguments {
+            command: "set".to_string(),
+        }));
+    }
+
+    #[test]
+    fn max_args() {
+        let mut store =  crate_store();
+
+        let mut set = Set {
+            args: vec!["key".to_string(), "value".to_string(), "extra".to_string()],
+        };
+
+        let response = set.execute(&mut store);
+
+        assert_eq!(response, RespType::SimpleError(Error::WrongNumberOfArguments {
+            command: "set".to_string(),
+        }));
+    }
+
+}
+

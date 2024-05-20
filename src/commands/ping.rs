@@ -1,6 +1,6 @@
 use crate::{
     resp::{errors::Error, types::RespType},
-    types::store::Store,
+    utils::store::Store,
 };
 
 use super::resp_command::{RESPCommand, RESPCommandName, RESPMinMaxArgs};

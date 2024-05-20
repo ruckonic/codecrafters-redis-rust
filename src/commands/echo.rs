@@ -1,7 +1,7 @@
 use super::resp_command::{RESPCommand, RESPCommandName, RESPMinMaxArgs};
 use crate::{
     resp::{errors::Error, types::RespType},
-    types::store::Store,
+    utils::store::Store,
 };
 
 pub struct Echo {
@@ -59,20 +59,13 @@ impl RESPCommand for Echo {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::{
-        collections::HashMap,
-        sync::{Arc, Mutex},
-    };
-
-    fn create_store() -> Arc<Mutex<HashMap<String, String>>> {
-        Arc::new(Mutex::new(HashMap::new()))
-    }
+    use crate::utils::store;
 
     #[test]
     fn min_args() {
         let args = vec![];
         let mut echo_command = Echo { args };
-        let mut store = create_store();
+        let mut store = store::create_store();
 
         let wrong_number_of_args_err = echo_command.execute(&mut store);
 
@@ -88,7 +81,7 @@ mod tests {
     fn max_args() {
         let args = vec![String::from("value"), String::from("value2")];
         let mut echo_command = Echo { args };
-        let mut store = create_store();
+        let mut store = store::create_store();
 
         let wrong_number_of_args_err = echo_command.execute(&mut store);
 
@@ -104,7 +97,7 @@ mod tests {
     fn return_bulk_string() {
         let args = vec![String::from("value")];
         let mut echo_command = Echo { args };
-        let mut store = create_store();
+        let mut store = store::create_store();
 
         let resp = echo_command.execute(&mut store);
 
@@ -117,3 +110,4 @@ mod tests {
         );
     }
 }
+

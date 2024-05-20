@@ -60,9 +60,7 @@ impl ToString for RespType {
             RespType::SimpleError(err) => {
                 format!("-{}\r\n", err.to_string())
             }
-            RespType::Null => {
-                "_\r\n".to_string()
-            }
+            RespType::Null => "_\r\n".to_string(),
         }
     }
 }

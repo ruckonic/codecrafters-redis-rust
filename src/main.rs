@@ -1,15 +1,14 @@
+mod models;
 mod commands;
 mod resp;
-mod types;
+mod utils;
 
-use types::store::Store;
+use utils::store::{self, Store};
 
 use core::result::Result;
-use std::collections::HashMap;
 use std::io::Error;
 use std::net::SocketAddr;
-use std::sync::Mutex;
-use std::{borrow::Cow, sync::Arc};
+use std::borrow::Cow;
 use tokio::{
     io::{AsyncReadExt, AsyncWriteExt},
     net::{TcpListener, TcpStream},
@@ -21,7 +20,7 @@ use crate::resp::types::RespType;
 #[tokio::main]
 async fn main() -> Result<(), Error> {
     let listener = TcpListener::bind("127.0.0.1:6379").await?;
-    let store: Store = Arc::new(Mutex::new(HashMap::<String, String>::new()));
+    let store: Store = store::create_store();
 
     loop {
         let stream: Result<(TcpStream, SocketAddr), Error> = listener.accept().await;

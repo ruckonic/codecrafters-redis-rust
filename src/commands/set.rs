@@ -1,9 +1,9 @@
-use crate::{
-    resp::{errors::Error, types::RespType},
-    types::store::Store,
-};
+use std::time::Duration;
 
 use super::resp_command::{RESPCommand, RESPCommandName, RESPMinMaxArgs};
+use crate::models::StoreValue;
+use crate::resp::{errors::Error, types::RespType};
+use crate::utils::store::Store;
 
 pub struct Set {
     pub args: Vec<String>,
@@ -21,11 +21,34 @@ impl RESPMinMaxArgs for Set {
     }
 
     fn max_args(&self) -> usize {
-        2
+        4
     }
 
     fn args_len(&self) -> usize {
         self.args.len()
+    }
+}
+
+impl Set {
+    fn get_duration(kind: String, value: Option<&String>) -> Option<Duration> {
+        if value.is_none() {
+            return None;
+        }
+
+        let value = value.unwrap();
+        let value = value.parse::<u64>();
+
+        if value.is_err() {
+            return None;
+        }
+
+        let value = value.unwrap();
+
+        return match kind.as_str() {
+            "px" => Some(Duration::from_millis(value)),
+            "ex" => Some(Duration::from_secs(value)),
+            _ => None,
+        };
     }
 }
 
@@ -48,6 +71,17 @@ impl RESPCommand for Set {
             .into();
         }
 
+        let opt = self.args.get(2);
+        let mut duration: Option<Duration> = None;
+
+        if let Some(opt) = opt {
+            let next_opt = self.args.get(3);
+            let opt = opt.to_lowercase();
+            let kind = opt;
+
+            duration = Set::get_duration(kind, next_opt);
+        }
+
         let key = key.unwrap();
         let value = value.unwrap();
         let store = store.lock();
@@ -59,8 +93,8 @@ impl RESPCommand for Set {
         }
 
         let mut store = store.unwrap();
-
-        let _ = store.insert(key.to_string(), value.to_string());
+        let value = StoreValue::new(value.to_string(), duration);
+        let _ = store.insert(key.to_string(), value);
 
         return RespType::SimpleString {
             value: "OK".to_string(),
@@ -71,37 +105,65 @@ impl RESPCommand for Set {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::sync::Mutex;
-    use std::collections::HashMap;
-
-    fn crate_store() -> Store {
-        Store::new(Mutex::new(HashMap::<String, String>::new()))
-    }
+    use crate::utils::store;
 
     #[test]
-    fn set_command() {
-        let mut store =  crate_store();
+    fn set_value() {
+        let mut store = store::create_store();
+        let key = String::from("set_value_key");
+        let value = String::from("set_value_value");
+        let args = vec![key.clone(), value.clone()];
 
-        let mut set = Set {
-            args: vec!["key".to_string(), "value".to_string()],
-        };
+        let mut set = Set { args };
 
         let response = set.execute(&mut store);
 
-        assert_eq!(response, RespType::SimpleString {
-            value: "OK".to_string(),
-        });
+        assert_eq!(
+            response,
+            RespType::SimpleString {
+                value: "OK".to_string(),
+            }
+        );
 
         let store = store.lock().unwrap();
-        let value = store.get("key");
+        let store_value = store.get(key.as_str());
 
+        assert!(store_value.is_some());
 
-        assert_eq!(value, Some(&"value".to_string()));
+        assert_eq!(store_value, Some(&StoreValue::from(value)));
     }
 
     #[test]
-    fn min_args() {
-        let mut store =  crate_store();
+    fn set_value_with_ttl() {
+        let mut store = store::create_store();
+        let key = String::from("set_value_key");
+        let value = String::from("set_value_value");
+        let px = String::from("px");
+        let ttl = String::from("1000");
+        let args = vec![key.clone(), value.clone(), px.clone(), ttl.clone()];
+        let mut set = Set { args };
+
+        let response = set.execute(&mut store);
+
+        assert_eq!(
+            response,
+            RespType::SimpleString {
+                value: "OK".to_string(),
+            }
+        );
+
+        let store = store.lock().unwrap();
+        let store_value = store.get(key.as_str());
+
+        assert!(store_value.is_some());
+        let duration = Set::get_duration(px, Some(&ttl));
+
+        assert_eq!(store_value, Some(&StoreValue::new(value, duration)));
+    }
+
+    #[test]
+    fn validate_min_args() {
+        let mut store = store::create_store();
 
         let mut set = Set {
             args: vec!["key".to_string()],
@@ -109,25 +171,32 @@ mod tests {
 
         let response = set.execute(&mut store);
 
-        assert_eq!(response, RespType::SimpleError(Error::WrongNumberOfArguments {
-            command: "set".to_string(),
-        }));
+        assert_eq!(
+            response,
+            RespType::SimpleError(Error::WrongNumberOfArguments {
+                command: "set".to_string(),
+            })
+        );
     }
 
     #[test]
-    fn max_args() {
-        let mut store =  crate_store();
+    fn validate_max_args() {
+        let mut store = store::create_store();
 
         let mut set = Set {
-            args: vec!["key".to_string(), "value".to_string(), "extra".to_string()],
+            args: vec!["key".to_string(), "value".to_string(), "extra".to_string(), "extra".to_string(), "extra".to_string()],
         };
+
+        set.is_valid();
 
         let response = set.execute(&mut store);
 
-        assert_eq!(response, RespType::SimpleError(Error::WrongNumberOfArguments {
-            command: "set".to_string(),
-        }));
+        assert_eq!(
+            response,
+            RespType::SimpleError(Error::WrongNumberOfArguments {
+                command: "set".to_string(),
+            })
+        );
     }
-
 }
 

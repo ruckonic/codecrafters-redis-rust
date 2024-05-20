@@ -1,7 +1,5 @@
-use crate::{
-    resp::{errors::Error, types::RespType},
-    types::store::Store,
-};
+use crate::resp::{errors::Error, types::RespType};
+use crate::utils::store::Store;
 
 use super::resp_command::{RESPCommand, RESPCommandName, RESPMinMaxArgs};
 
@@ -57,18 +55,24 @@ impl RESPCommand for Get {
             .into();
         }
 
-        let store = store.unwrap();
-        let value = store.get(key.as_str());
+        let mut store = store.unwrap();
+        let store_value = store.get(key.as_str());
 
-        if value.is_none() {
+        if store_value.is_none() {
             return RespType::Null;
         }
 
-        let value = value.unwrap().clone();
+        let store_value = store_value.unwrap();
+        let value = store_value.data.clone();
+
+        if store_value.is_expired() {
+            store.remove(key);
+            return RespType::Null;
+        }
 
         let bulk_string = RespType::BulkString {
             len: value.len(),
-            value,
+            value: value.to_string(),
         };
 
         return bulk_string;
@@ -78,25 +82,18 @@ impl RESPCommand for Get {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::{
-        collections::HashMap,
-        sync::{Arc, Mutex},
-    };
-
-    use crate::types::store::Store;
-
-    fn create_store() -> Store {
-        Arc::new(Mutex::new(HashMap::new()))
-    }
+    use crate::models::StoreValue;
+    use crate::utils::store;
 
     #[test]
-    fn test_get() {
-        let mut store = create_store();
+    fn get_value() {
+        let mut store = store::create_store();
+        let value = String::from("value");
 
         store
             .lock()
             .unwrap()
-            .insert("key".to_string(), "value".to_string());
+            .insert("key".to_string(), StoreValue::from(value.clone()));
 
         let mut get = Get {
             args: vec!["key".to_string()],
@@ -104,43 +101,78 @@ mod tests {
 
         let result = get.execute(&mut store);
 
-        assert_eq!(
-            result,
-            RespType::BulkString {
-                len: 5,
-                value: "value".to_string(),
-            }
-        );
+        assert_eq!(result, RespType::BulkString { len: 5, value });
     }
 
     #[test]
-    fn test_get_invalid() {
-        let mut store = create_store();
-        let mut get = Get { args: vec![] };
+    fn validate_min_arguments() {
+        let mut store = store::create_store();
+        let args = vec![];
+        let mut get = Get { args };
+
+        let wrong_number_of_args_error = Error::WrongNumberOfArguments {
+            command: get.command_name().to_string(),
+        };
 
         let result = get.execute(&mut store);
 
-        assert_eq!(
-            result,
-            RespType::SimpleError(Error::WrongNumberOfArguments {
-                command: "get".to_string(),
-            })
-        );
+        assert_eq!(result, RespType::SimpleError(wrong_number_of_args_error));
     }
 
     #[test]
-    fn test_get_key_not_found() {
-        let mut store = create_store();
+    fn validate_max_arguments() {
+        let mut store = store::create_store();
+        let args = vec!["arg1".to_string(), "arg2".to_string()];
+        let mut get = Get { args };
+
+        let wrong_number_of_args_error = Error::WrongNumberOfArguments {
+            command: get.command_name().to_string(),
+        };
+
+        let result = get.execute(&mut store);
+
+        assert_eq!(result, RespType::SimpleError(wrong_number_of_args_error));
+    }
+
+    #[test]
+    fn resturns_null_when_key_not_found() {
+        let mut store = store::create_store();
         let mut get = Get {
             args: vec!["key".to_string()],
         };
 
         let result = get.execute(&mut store);
 
-        assert_eq!(
-            result,
-            RespType::Null,
-        );
+        assert_eq!(result, RespType::Null,);
+    }
+
+    #[test]
+    fn returns_null_when_key_expired() {
+        let mut store = store::create_store();
+        let created_at = std::time::SystemTime::now() - std::time::Duration::from_secs(100);
+        let expire_time = Some(std::time::Duration::from_secs(100));
+
+        let store_value = StoreValue {
+            data: "value".to_string(),
+            created_at,
+            expire_time,
+        };
+
+        let key = String::from("key_expired");
+        let args = vec![key.clone()];
+
+        store
+            .lock()
+            .unwrap()
+            .insert(key, store_value);
+
+        let mut get = Get {
+            args,
+        };
+
+
+        let result = get.execute(&mut store);
+
+        assert_eq!(result, RespType::Null);
     }
 }
-

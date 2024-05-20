@@ -103,7 +103,6 @@ impl TryFrom<RespType> for Command {
 #[cfg(test)]
 mod tests {
     use crate::resp::types::RespType;
-
     use super::Command;
 
     #[test]

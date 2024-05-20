@@ -4,6 +4,7 @@ mod resp;
 mod utils;
 
 use utils::store::{self, Store};
+use utils::config;
 
 use core::result::Result;
 use std::io::Error;
@@ -19,7 +20,8 @@ use crate::resp::types::RespType;
 
 #[tokio::main]
 async fn main() -> Result<(), Error> {
-    let listener = TcpListener::bind("127.0.0.1:6379").await?;
+    let config = config::load().unwrap();
+    let listener = TcpListener::bind(format!("127.0.0.1:{}", config.port)).await?;
     let store: Store = store::create_store();
 
     loop {

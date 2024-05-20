@@ -60,7 +60,8 @@ impl ToString for RespType {
             RespType::SimpleError(err) => {
                 format!("-{}\r\n", err.to_string())
             }
-            RespType::Null => "_\r\n".to_string(),
+            // RESP v2 null are null bulk strings this is temp fix for resp v2
+            RespType::Null => "$-1\r\n".to_string(),
         }
     }
 }

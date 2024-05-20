@@ -3,6 +3,7 @@ use super::Echo;
 use super::Get;
 use super::Ping;
 use super::Set;
+use super::Info;
 
 use crate::resp::errors::Error;
 use crate::resp::types::RespType;
@@ -41,6 +42,11 @@ impl Command {
                 let get = Get { args };
 
                 Ok(Box::new(get))
+            }
+            "info" => {
+                let info = Info { args };
+
+                Ok(Box::new(info))
             }
             _ => Err(Error::UnknownCommand {
                 command: self.0.clone(),

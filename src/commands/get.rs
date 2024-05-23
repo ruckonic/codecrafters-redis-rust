@@ -1,5 +1,5 @@
 use crate::resp::{errors::Error, types::RespType};
-use crate::utils::store::Store;
+use crate::utils::context::Context;
 
 use super::resp_command::{RESPCommand, RESPCommandName, RESPMinMaxArgs};
 
@@ -28,7 +28,9 @@ impl RESPMinMaxArgs for Get {
 }
 
 impl RESPCommand for Get {
-    fn execute(&mut self, store: &mut Store) -> RespType {
+    fn execute(&mut self, ctx: &mut Context) -> RespType {
+        let store = &mut ctx.store;
+
         if self.is_invalid() {
             return Error::WrongNumberOfArguments {
                 command: self.command_name().to_string(),
@@ -46,16 +48,8 @@ impl RESPCommand for Get {
         }
 
         let key = key.unwrap();
-        let store = store.lock();
 
-        if store.is_err() {
-            return Error::Custom {
-                message: "Error getting data".to_string(),
-            }
-            .into();
-        }
 
-        let mut store = store.unwrap();
         let store_value = store.get(key.as_str());
 
         if store_value.is_none() {
@@ -83,30 +77,32 @@ impl RESPCommand for Get {
 mod tests {
     use super::*;
     use crate::models::StoreValue;
-    use crate::utils::store;
+    use crate::utils::context::create_context;
 
     #[test]
     fn get_value() {
-        let mut store = store::create_store();
+        let ctx = create_context();
+        let mut ctx = ctx.lock().unwrap();
+        let store = &mut ctx.store;
+
         let value = String::from("value");
+        let key = "key".to_string();
 
         store
-            .lock()
-            .unwrap()
-            .insert("key".to_string(), StoreValue::from(value.clone()));
+            .insert(key.clone(), StoreValue::from(value.clone()));
 
         let mut get = Get {
-            args: vec!["key".to_string()],
+            args: vec![key.clone()],
         };
 
-        let result = get.execute(&mut store);
+        let result = get.execute(&mut ctx);
 
         assert_eq!(result, RespType::BulkString { len: 5, value });
     }
 
     #[test]
     fn validate_min_arguments() {
-        let mut store = store::create_store();
+        let mut ctx = Context::default();
         let args = vec![];
         let mut get = Get { args };
 
@@ -114,14 +110,14 @@ mod tests {
             command: get.command_name().to_string(),
         };
 
-        let result = get.execute(&mut store);
+        let result = get.execute(&mut ctx);
 
         assert_eq!(result, RespType::SimpleError(wrong_number_of_args_error));
     }
 
     #[test]
     fn validate_max_arguments() {
-        let mut store = store::create_store();
+        let mut ctx = Context::default();
         let args = vec!["arg1".to_string(), "arg2".to_string()];
         let mut get = Get { args };
 
@@ -129,26 +125,27 @@ mod tests {
             command: get.command_name().to_string(),
         };
 
-        let result = get.execute(&mut store);
+        let result = get.execute(&mut ctx);
 
         assert_eq!(result, RespType::SimpleError(wrong_number_of_args_error));
     }
 
     #[test]
     fn resturns_null_when_key_not_found() {
-        let mut store = store::create_store();
+        let mut ctx = Context::default();
         let mut get = Get {
             args: vec!["key".to_string()],
         };
 
-        let result = get.execute(&mut store);
+        let result = get.execute(&mut ctx);
 
         assert_eq!(result, RespType::Null,);
     }
 
     #[test]
     fn returns_null_when_key_expired() {
-        let mut store = store::create_store();
+        let mut ctx = Context::default();
+        let store = &mut ctx.store;
         let created_at = std::time::SystemTime::now() - std::time::Duration::from_secs(100);
         let expire_time = Some(std::time::Duration::from_secs(100));
 
@@ -162,8 +159,6 @@ mod tests {
         let args = vec![key.clone()];
 
         store
-            .lock()
-            .unwrap()
             .insert(key, store_value);
 
         let mut get = Get {
@@ -171,7 +166,7 @@ mod tests {
         };
 
 
-        let result = get.execute(&mut store);
+        let result = get.execute(&mut ctx);
 
         assert_eq!(result, RespType::Null);
     }

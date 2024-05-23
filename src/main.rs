@@ -3,12 +3,14 @@ mod commands;
 mod resp;
 mod utils;
 
-use utils::store::{self, Store};
+use utils::store;
 use utils::config;
+use utils::context::{self, Context};
 
 use core::result::Result;
 use std::io::Error;
 use std::net::SocketAddr;
+use std::sync::{Arc, Mutex};
 use std::borrow::Cow;
 use tokio::{
     io::{AsyncReadExt, AsyncWriteExt},
@@ -21,19 +23,20 @@ use crate::resp::types::RespType;
 #[tokio::main]
 async fn main() -> Result<(), Error> {
     let config = config::load().unwrap();
+    let context = context::create_context();
     let listener = TcpListener::bind(format!("127.0.0.1:{}", config.port)).await?;
-    let store: Store = store::create_store();
+
+
 
     loop {
         let stream: Result<(TcpStream, SocketAddr), Error> = listener.accept().await;
 
         match stream {
             Ok((mut stream, _)) => {
-                println!("New connection");
-                let store = store.clone();
+                let mut context = context.clone();
 
                 let _ = tokio::spawn(async move {
-                    process_incoming_connections(&mut stream, store)
+                    process_incoming_connections(&mut stream, &mut context)
                         .await
                         .unwrap();
                 });
@@ -45,7 +48,7 @@ async fn main() -> Result<(), Error> {
     }
 }
 
-async fn process_incoming_connections(stream: &mut TcpStream, store: Store) -> Result<(), Error> {
+async fn process_incoming_connections(stream: &mut TcpStream, context: &mut Arc<Mutex<Context>>) -> Result<(), Error> {
     loop {
         let mut buffer: [u8; 1024] = [0; 1024];
         let bits_len: usize = stream.read(&mut buffer).await?;
@@ -58,6 +61,7 @@ async fn process_incoming_connections(stream: &mut TcpStream, store: Store) -> R
         let resp_type = RespType::try_from(input.to_string()).unwrap();
 
         let command = Command::try_from(resp_type);
+
         let response: String;
 
         match command {
@@ -66,7 +70,8 @@ async fn process_incoming_connections(stream: &mut TcpStream, store: Store) -> R
 
                 match command {
                     Ok(mut command_executable) => {
-                        let resp = command_executable.execute(&mut store.clone());
+                        let mut context = context.lock().unwrap();
+                        let resp = command_executable.execute(&mut context);
                         response = resp.to_string();
                     }
                     Err(err) => {

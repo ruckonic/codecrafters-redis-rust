@@ -1,5 +1,5 @@
+use crate::context::Context;
 use crate::resp::types::RespType; 
-use crate::utils::store::Store;
 
 pub trait RESPCommandName {
     /// Get the name of the command
@@ -22,6 +22,6 @@ pub trait RESPMinMaxArgs {
 }
 
 pub trait RESPCommand: RESPCommandName + RESPMinMaxArgs + Send {
-    fn execute(&mut self, ctx: &mut Store) -> RespType;
+    fn execute(&mut self, ctx: &mut Context) -> RespType;
 }
 

@@ -1,12 +1,12 @@
 use std::{
-    collections::HashMap, hash::RandomState, sync::{Arc, Mutex}
+    collections::HashMap, hash::RandomState
 };
 
 use crate::models::StoreValue;
 
-pub type Store = Arc<Mutex<HashMap<String, StoreValue, RandomState>>>;
+pub type Store = HashMap<String, StoreValue, RandomState>;
 
 pub fn create_store() -> Store {
-    Arc::new(Mutex::new(HashMap::new()))
+    HashMap::new()
 }
 

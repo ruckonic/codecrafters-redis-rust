@@ -1,5 +1,5 @@
 use crate::resp::{errors::Error, types::RespType};
-use crate::utils::store::Store;
+use crate::utils::context::Context;
 
 use super::resp_command::{RESPCommand, RESPCommandName, RESPMinMaxArgs};
 
@@ -28,7 +28,7 @@ impl RESPMinMaxArgs for Info {
 }
 
 impl RESPCommand for Info {
-    fn execute(&mut self, _: &mut Store) -> RespType {
+    fn execute(&mut self, ctx: &mut Context) -> RespType {
         if self.is_invalid() {
             return Error::WrongNumberOfArguments {
                 command: self.command_name().to_string(),
@@ -45,7 +45,14 @@ impl RESPCommand for Info {
             .into();
         }
 
-        let response = "#Replication\r\nrole:master\r\n".to_string();
+        let mut response = "#Replication\r\n".to_string();
+
+        // role
+
+        let role = &ctx.config.role;
+        let role = format!("role:{}\r\n", role.to_string());
+
+        response.push_str(&role);
 
         RespType::BulkString{ len: response.len(), value: response }
     }

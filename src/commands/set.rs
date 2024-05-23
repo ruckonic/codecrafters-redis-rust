@@ -3,7 +3,7 @@ use std::time::Duration;
 use super::resp_command::{RESPCommand, RESPCommandName, RESPMinMaxArgs};
 use crate::models::StoreValue;
 use crate::resp::{errors::Error, types::RespType};
-use crate::utils::store::Store;
+use crate::utils::context::Context;
 
 pub struct Set {
     pub args: Vec<String>,
@@ -53,7 +53,9 @@ impl Set {
 }
 
 impl RESPCommand for Set {
-    fn execute(&mut self, store: &mut Store) -> RespType {
+    fn execute(&mut self, ctx: &mut Context) -> RespType {
+        let store = &mut ctx.store;
+
         if self.is_invalid() {
             return Error::WrongNumberOfArguments {
                 command: self.command_name().to_string(),
@@ -84,15 +86,7 @@ impl RESPCommand for Set {
 
         let key = key.unwrap();
         let value = value.unwrap();
-        let store = store.lock();
 
-        if store.is_err() {
-            return RespType::SimpleError(Error::Custom {
-                message: "Error saving data".to_string(),
-            });
-        }
-
-        let mut store = store.unwrap();
         let value = StoreValue::new(value.to_string(), duration);
         let _ = store.insert(key.to_string(), value);
 
@@ -105,18 +99,20 @@ impl RESPCommand for Set {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::utils::store;
+    use crate::utils::context::create_context;
 
     #[test]
     fn set_value() {
-        let mut store = store::create_store();
+        let context = create_context();
+        let mut context = context.lock().unwrap();
         let key = String::from("set_value_key");
         let value = String::from("set_value_value");
         let args = vec![key.clone(), value.clone()];
 
         let mut set = Set { args };
 
-        let response = set.execute(&mut store);
+        let response = set.execute(&mut context);
+        let store = &context.store;
 
         assert_eq!(
             response,
@@ -125,7 +121,6 @@ mod tests {
             }
         );
 
-        let store = store.lock().unwrap();
         let store_value = store.get(key.as_str());
 
         assert!(store_value.is_some());
@@ -135,7 +130,8 @@ mod tests {
 
     #[test]
     fn set_value_with_ttl() {
-        let mut store = store::create_store();
+        let context = create_context();
+        let mut context = context.lock().unwrap();
         let key = String::from("set_value_key");
         let value = String::from("set_value_value");
         let px = String::from("px");
@@ -143,7 +139,8 @@ mod tests {
         let args = vec![key.clone(), value.clone(), px.clone(), ttl.clone()];
         let mut set = Set { args };
 
-        let response = set.execute(&mut store);
+        let response = set.execute(&mut context);
+        let store = &context.store;
 
         assert_eq!(
             response,
@@ -152,7 +149,6 @@ mod tests {
             }
         );
 
-        let store = store.lock().unwrap();
         let store_value = store.get(key.as_str());
 
         assert!(store_value.is_some());
@@ -163,13 +159,14 @@ mod tests {
 
     #[test]
     fn validate_min_args() {
-        let mut store = store::create_store();
+        let context = create_context();
+        let mut context = context.lock().unwrap();
 
         let mut set = Set {
             args: vec!["key".to_string()],
         };
 
-        let response = set.execute(&mut store);
+        let response = set.execute(&mut context);
 
         assert_eq!(
             response,
@@ -181,15 +178,16 @@ mod tests {
 
     #[test]
     fn validate_max_args() {
-        let mut store = store::create_store();
+        let context = create_context();
+        let mut context = context.lock().unwrap();
 
         let mut set = Set {
             args: vec!["key".to_string(), "value".to_string(), "extra".to_string(), "extra".to_string(), "extra".to_string()],
         };
 
-        set.is_valid();
+       assert!(!set.is_valid());
 
-        let response = set.execute(&mut store);
+        let response = set.execute(&mut context);
 
         assert_eq!(
             response,

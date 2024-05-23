@@ -1,7 +1,7 @@
 use super::resp_command::{RESPCommand, RESPCommandName, RESPMinMaxArgs};
 use crate::{
     resp::{errors::Error, types::RespType},
-    utils::store::Store,
+    utils::context::Context
 };
 
 pub struct Echo {
@@ -29,7 +29,7 @@ impl RESPMinMaxArgs for Echo {
 }
 
 impl RESPCommand for Echo {
-    fn execute(&mut self, _: &mut Store) -> RespType {
+    fn execute(&mut self, _: &mut Context) -> RespType {
         if self.is_invalid() {
             return Error::WrongNumberOfArguments {
                 command: self.command_name().to_string(),
@@ -59,15 +59,15 @@ impl RESPCommand for Echo {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::utils::store;
+    use crate::utils::context::Context;
 
     #[test]
     fn min_args() {
         let args = vec![];
         let mut echo_command = Echo { args };
-        let mut store = store::create_store();
+        let mut ctx = Context::default();
 
-        let wrong_number_of_args_err = echo_command.execute(&mut store);
+        let wrong_number_of_args_err = echo_command.execute(&mut ctx);
 
         assert_eq!(
             wrong_number_of_args_err,
@@ -81,9 +81,9 @@ mod tests {
     fn max_args() {
         let args = vec![String::from("value"), String::from("value2")];
         let mut echo_command = Echo { args };
-        let mut store = store::create_store();
+        let mut ctx = Context::default();
 
-        let wrong_number_of_args_err = echo_command.execute(&mut store);
+        let wrong_number_of_args_err = echo_command.execute(&mut ctx);
 
         assert_eq!(
             wrong_number_of_args_err,
@@ -97,9 +97,10 @@ mod tests {
     fn return_bulk_string() {
         let args = vec![String::from("value")];
         let mut echo_command = Echo { args };
-        let mut store = store::create_store();
+        let mut ctx = Context::default(); 
 
-        let resp = echo_command.execute(&mut store);
+            
+        let resp = echo_command.execute(&mut ctx);
 
         assert_eq!(
             resp,

@@ -24,27 +24,27 @@ impl Command {
 
         match opt.to_lowercase().as_str() {
             "echo" => {
-                let echo = Echo { args };
+                let echo = Echo(args);
 
                 Ok(Box::new(echo))
             }
             "ping" => {
-                let ping = Ping { args };
+                let ping = Ping(args);
 
                 Ok(Box::new(ping))
             }
             "set" => {
-                let set = Set { args };
+                let set = Set(args);
 
                 Ok(Box::new(set))
             }
             "get" => {
-                let get = Get { args };
+                let get = Get(args);
 
                 Ok(Box::new(get))
             }
             "info" => {
-                let info = Info { args };
+                let info = Info(args);
 
                 Ok(Box::new(info))
             }

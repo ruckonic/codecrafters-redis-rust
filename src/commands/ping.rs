@@ -5,9 +5,7 @@ use crate::{
 
 use super::resp_command::{RESPCommand, RESPCommandName, RESPMinMaxArgs};
 
-pub struct Ping {
-    pub args: Vec<String>,
-}
+pub struct Ping(pub Vec<String>);
 
 impl RESPCommandName for Ping {
     fn command_name(&self) -> &'static str {
@@ -25,7 +23,7 @@ impl RESPMinMaxArgs for Ping {
     }
 
     fn args_len(&self) -> usize {
-        self.args.len()
+        self.0.len()
     }
 }
 
@@ -38,7 +36,7 @@ impl RESPCommand for Ping {
             .into();
         }
 
-        let message = self.args.get(0);
+        let message = self.0.get(0);
 
         let response = match message {
             Some(v) => RespType::BulkString {
@@ -61,7 +59,7 @@ mod tests {
     #[test]
     fn ping_command() {
         let mut ctx = Context::default();
-        let mut ping = Ping { args: vec![] };
+        let mut ping = Ping(vec![]);
         let response = ping.execute(&mut ctx);
 
         match response {
@@ -71,9 +69,7 @@ mod tests {
             _ => panic!("Expected SimpleString"),
         }
 
-        let mut ping = Ping {
-            args: vec!["hello".to_string()],
-        };
+        let mut ping = Ping(vec!["hello".to_string()]);
 
         let response = ping.execute(&mut ctx);
 
@@ -89,7 +85,7 @@ mod tests {
     #[test]
     fn min_args() {
         let mut ctx = Context::default();
-        let mut ping = Ping { args: vec![] };
+        let mut ping = Ping(vec![]);
         let response = ping.execute(&mut ctx);
 
         match response {
@@ -103,9 +99,9 @@ mod tests {
     #[test]
     fn max_args() {
         let mut ctx = Context::default();
-        let mut ping = Ping {
-            args: vec!["hello".to_string()],
-        };
+        let mut ping = Ping (
+             vec!["hello".to_string()]
+        );
 
         let response = ping.execute(&mut ctx);
 
@@ -121,9 +117,9 @@ mod tests {
     #[test]
     fn min_args_fail() {
         let mut ctx = Context::default();
-        let mut ping = Ping {
-            args: vec!["hello".to_string(), "world".to_string()],
-        };
+        let mut ping = Ping (
+           vec!["hello".to_string(), "world".to_string()]
+        );
 
         let response = ping.execute(&mut ctx);
 
@@ -138,9 +134,9 @@ mod tests {
     #[test]
     fn max_args_fail() {
         let mut ctx = Context::default();
-        let mut ping = Ping {
-            args: vec!["hello".to_string(), "world".to_string()],
-        };
+        let mut ping = Ping (
+            vec!["hello".to_string(), "world".to_string()],
+        );
 
         let response = ping.execute(&mut ctx);
 

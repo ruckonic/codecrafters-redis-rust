@@ -4,9 +4,7 @@ use crate::{
     utils::context::Context
 };
 
-pub struct Echo {
-    pub(crate) args: Vec<String>,
-}
+pub struct Echo(pub Vec<String>);
 
 impl RESPCommandName for Echo {
     fn command_name(&self) -> &'static str {
@@ -16,7 +14,7 @@ impl RESPCommandName for Echo {
 
 impl RESPMinMaxArgs for Echo {
     fn args_len(&self) -> usize {
-        self.args.len()
+        self.0.len()
     }
 
     fn min_args(&self) -> usize {
@@ -37,7 +35,7 @@ impl RESPCommand for Echo {
             .into();
         }
 
-        let message = self.args.get(0);
+        let message = self.0.get(0);
 
         if message.is_none() {
             return Error::WrongNumberOfArguments {
@@ -64,7 +62,7 @@ mod tests {
     #[test]
     fn min_args() {
         let args = vec![];
-        let mut echo_command = Echo { args };
+        let mut echo_command = Echo(args);
         let mut ctx = Context::default();
 
         let wrong_number_of_args_err = echo_command.execute(&mut ctx);
@@ -80,7 +78,7 @@ mod tests {
     #[test]
     fn max_args() {
         let args = vec![String::from("value"), String::from("value2")];
-        let mut echo_command = Echo { args };
+        let mut echo_command = Echo(args);
         let mut ctx = Context::default();
 
         let wrong_number_of_args_err = echo_command.execute(&mut ctx);
@@ -96,7 +94,7 @@ mod tests {
     #[test]
     fn return_bulk_string() {
         let args = vec![String::from("value")];
-        let mut echo_command = Echo { args };
+        let mut echo_command = Echo(args);
         let mut ctx = Context::default(); 
 
             

@@ -3,9 +3,7 @@ use crate::utils::context::Context;
 
 use super::resp_command::{RESPCommand, RESPCommandName, RESPMinMaxArgs};
 
-pub struct Get {
-    pub args: Vec<String>,
-}
+pub struct Get (pub Vec<String>);
 
 impl RESPCommandName for Get {
     fn command_name(&self) -> &'static str {
@@ -23,7 +21,7 @@ impl RESPMinMaxArgs for Get {
     }
 
     fn args_len(&self) -> usize {
-        self.args.len()
+        self.0.len()
     }
 }
 
@@ -38,7 +36,7 @@ impl RESPCommand for Get {
             .into();
         }
 
-        let key = self.args.get(0);
+        let key = self.0.get(0);
 
         if key.is_none() {
             return Error::WrongNumberOfArguments {
@@ -90,9 +88,7 @@ mod tests {
         store
             .insert(key.clone(), StoreValue::from(value.clone()));
 
-        let mut get = Get {
-            args: vec![key.clone()],
-        };
+        let mut get = Get(vec![key.clone()]);
 
         let result = get.execute(&mut ctx);
 
@@ -103,7 +99,7 @@ mod tests {
     fn validate_min_arguments() {
         let mut ctx = Context::default();
         let args = vec![];
-        let mut get = Get { args };
+        let mut get = Get(args);
 
         let wrong_number_of_args_error = Error::WrongNumberOfArguments {
             command: get.command_name().to_string(),
@@ -118,7 +114,7 @@ mod tests {
     fn validate_max_arguments() {
         let mut ctx = Context::default();
         let args = vec!["arg1".to_string(), "arg2".to_string()];
-        let mut get = Get { args };
+        let mut get = Get(args);
 
         let wrong_number_of_args_error = Error::WrongNumberOfArguments {
             command: get.command_name().to_string(),
@@ -132,9 +128,7 @@ mod tests {
     #[test]
     fn resturns_null_when_key_not_found() {
         let mut ctx = Context::default();
-        let mut get = Get {
-            args: vec!["key".to_string()],
-        };
+        let mut get = Get(vec!["key".to_string()]);
 
         let result = get.execute(&mut ctx);
 
@@ -160,10 +154,7 @@ mod tests {
         store
             .insert(key, store_value);
 
-        let mut get = Get {
-            args,
-        };
-
+        let mut get = Get(args);
 
         let result = get.execute(&mut ctx);
 

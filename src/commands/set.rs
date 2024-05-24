@@ -5,9 +5,9 @@ use crate::models::StoreValue;
 use crate::resp::{errors::Error, types::RespType};
 use crate::utils::context::Context;
 
-pub struct Set {
-    pub args: Vec<String>,
-}
+pub struct Set (
+    pub Vec<String>
+);
 
 impl RESPCommandName for Set {
     fn command_name(&self) -> &'static str {
@@ -25,7 +25,7 @@ impl RESPMinMaxArgs for Set {
     }
 
     fn args_len(&self) -> usize {
-        self.args.len()
+        self.0.len()
     }
 }
 
@@ -63,8 +63,8 @@ impl RESPCommand for Set {
             .into();
         }
 
-        let key = self.args.get(0);
-        let value = self.args.get(1);
+        let key = self.0.get(0);
+        let value = self.0.get(1);
 
         if key.is_none() || value.is_none() {
             return Error::WrongNumberOfArguments {
@@ -73,11 +73,11 @@ impl RESPCommand for Set {
             .into();
         }
 
-        let opt = self.args.get(2);
+        let opt = self.0.get(2);
         let mut duration: Option<Duration> = None;
 
         if let Some(opt) = opt {
-            let next_opt = self.args.get(3);
+            let next_opt = self.0.get(3);
             let opt = opt.to_lowercase();
             let kind = opt;
 
@@ -108,7 +108,7 @@ mod tests {
         let value = String::from("set_value_value");
         let args = vec![key.clone(), value.clone()];
 
-        let mut set = Set { args };
+        let mut set = Set ( args );
 
         let response = set.execute(&mut context);
         let store = &context.store;
@@ -135,7 +135,7 @@ mod tests {
         let px = String::from("px");
         let ttl = String::from("1000");
         let args = vec![key.clone(), value.clone(), px.clone(), ttl.clone()];
-        let mut set = Set { args };
+        let mut set = Set ( args );
 
         let response = set.execute(&mut context);
         let store = &context.store;
@@ -159,9 +159,9 @@ mod tests {
     fn validate_min_args() {
         let mut context = Context::default();
 
-        let mut set = Set {
-            args: vec!["key".to_string()],
-        };
+        let mut set = Set (
+            vec!["key".to_string()]
+        );
 
         let response = set.execute(&mut context);
 
@@ -176,9 +176,9 @@ mod tests {
     #[test]
     fn validate_max_args() {
         let mut context = Context::default();
-        let mut set = Set {
-            args: vec!["key".to_string(), "value".to_string(), "extra".to_string(), "extra".to_string(), "extra".to_string()],
-        };
+        let mut set = Set (
+            vec!["key".to_string(), "value".to_string(), "extra".to_string(), "extra".to_string(), "extra".to_string()],
+        );
 
        assert!(!set.is_valid());
 

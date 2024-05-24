@@ -3,9 +3,7 @@ use crate::utils::context::Context;
 
 use super::resp_command::{RESPCommand, RESPCommandName, RESPMinMaxArgs};
 
-pub struct Info {
-    pub args: Vec<String>,
-}
+pub struct Info(pub Vec<String>);
 
 impl RESPCommandName for Info {
     fn command_name(&self) -> &'static str {
@@ -23,7 +21,7 @@ impl RESPMinMaxArgs for Info {
     }
 
     fn args_len(&self) -> usize {
-        self.args.len()
+        self.0.len()
     }
 }
 
@@ -36,7 +34,7 @@ impl RESPCommand for Info {
             .into();
         }
 
-        let key = self.args.get(0);
+        let key = self.0.get(0);
 
         if key.is_none() {
             return Error::WrongNumberOfArguments {

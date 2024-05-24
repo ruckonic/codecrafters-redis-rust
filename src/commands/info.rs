@@ -43,15 +43,23 @@ impl RESPCommand for Info {
             .into();
         }
 
-        let mut response = "#Replication\r\n".to_string();
+
 
         // role
         let role = &ctx.config.role;
+        let master_replid = &ctx.config.master_replid;
+        let master_repl_offset = &ctx.config.master_repl_offset;
+        
+        let response = String::from("#Replication\r\n");
         let role = format!("role:{}\r\n", role.to_string());
+        let master_replid = format!("master_replid:{}\r\n", master_replid.to_string());
+        let master_repl_offset = format!("master_repl_offset:{}\r\n", master_repl_offset.to_string());
+        
+        
+        let info = response + &role + &master_replid + &master_repl_offset;
 
-        response.push_str(&role);
 
-        RespType::BulkString{ len: response.len(), value: response }
+        RespType::BulkString{ len: info.len(), value: info }
     }
 }
 

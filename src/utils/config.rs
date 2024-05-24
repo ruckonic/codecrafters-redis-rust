@@ -28,6 +28,8 @@ pub struct Config {
     pub(crate) port: u16,
     pub(crate) role: Role,
     pub(crate) replication: Option<Replication>,
+    pub(crate) master_replid: String,
+    pub(crate) master_repl_offset: u64,
 }
 
 impl Default for Config {
@@ -36,6 +38,8 @@ impl Default for Config {
             port: 6379,
             role: Role::Master,
             replication: None,
+            master_replid: "8371b4fb1155b71f4a04d3e1bc3e18c4a990aeeb".to_string(),
+            master_repl_offset: 0,
         }
     }
 }
@@ -78,6 +82,7 @@ pub fn load() -> Result<Config> {
                             config.replication = Some(Replication {
                                 host: host.to_string(),
                                 port: port.parse::<u16>().expect("Invalid port"),
+
                             });
 
                         }
@@ -92,3 +97,4 @@ pub fn load() -> Result<Config> {
 
     Ok(config)
 }
+

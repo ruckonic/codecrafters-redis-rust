@@ -1,6 +1,3 @@
-use std::sync::Arc;
-use std::sync::Mutex;
-
 use crate::config;
 use crate::store;
 
@@ -8,10 +5,6 @@ use crate::store;
 pub struct Context {
     pub store: store::Store,
     pub config: config::Config,
-}
-
-pub fn create_context() -> Arc<Mutex<Context>> {
-    Arc::new(Mutex::new(Context::default()))
 }
 
 impl Context {

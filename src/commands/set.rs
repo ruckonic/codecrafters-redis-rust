@@ -99,12 +99,11 @@ impl RESPCommand for Set {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::utils::context::create_context;
+    use crate::utils::context::Context;
 
     #[test]
     fn set_value() {
-        let context = create_context();
-        let mut context = context.lock().unwrap();
+        let mut context = Context::default(); 
         let key = String::from("set_value_key");
         let value = String::from("set_value_value");
         let args = vec![key.clone(), value.clone()];
@@ -130,8 +129,7 @@ mod tests {
 
     #[test]
     fn set_value_with_ttl() {
-        let context = create_context();
-        let mut context = context.lock().unwrap();
+        let mut context = Context::default(); 
         let key = String::from("set_value_key");
         let value = String::from("set_value_value");
         let px = String::from("px");
@@ -159,8 +157,7 @@ mod tests {
 
     #[test]
     fn validate_min_args() {
-        let context = create_context();
-        let mut context = context.lock().unwrap();
+        let mut context = Context::default();
 
         let mut set = Set {
             args: vec!["key".to_string()],
@@ -178,9 +175,7 @@ mod tests {
 
     #[test]
     fn validate_max_args() {
-        let context = create_context();
-        let mut context = context.lock().unwrap();
-
+        let mut context = Context::default();
         let mut set = Set {
             args: vec!["key".to_string(), "value".to_string(), "extra".to_string(), "extra".to_string(), "extra".to_string()],
         };

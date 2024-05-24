@@ -77,12 +77,11 @@ impl RESPCommand for Get {
 mod tests {
     use super::*;
     use crate::models::StoreValue;
-    use crate::utils::context::create_context;
+    use crate::utils::context::Context;
 
     #[test]
     fn get_value() {
-        let ctx = create_context();
-        let mut ctx = ctx.lock().unwrap();
+        let mut ctx = Context::default();
         let store = &mut ctx.store;
 
         let value = String::from("value");

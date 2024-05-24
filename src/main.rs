@@ -6,11 +6,11 @@ mod utils;
 use utils::store;
 use utils::config;
 use utils::context::{self, Context};
+use utils::shared_context::{SharedContext, create_shared_context};
 
 use core::result::Result;
 use std::io::Error;
 use std::net::SocketAddr;
-use std::sync::{Arc, Mutex};
 use std::borrow::Cow;
 use tokio::{
     io::{AsyncReadExt, AsyncWriteExt},
@@ -23,8 +23,10 @@ use crate::resp::types::RespType;
 #[tokio::main]
 async fn main() -> Result<(), Error> {
     let config = config::load().unwrap();
-    let context = context::create_context();
-    let listener = TcpListener::bind(format!("127.0.0.1:{}", config.port)).await?;
+    let port = config.port.clone();
+    let context = Context::new(store::create_store(), config);
+    let shared_context = create_shared_context(context);
+    let listener = TcpListener::bind(format!("127.0.0.1:{}", port)).await?;
 
 
 
@@ -33,7 +35,7 @@ async fn main() -> Result<(), Error> {
 
         match stream {
             Ok((mut stream, _)) => {
-                let mut context = context.clone();
+                let mut context = shared_context.clone();
 
                 let _ = tokio::spawn(async move {
                     process_incoming_connections(&mut stream, &mut context)
@@ -48,7 +50,7 @@ async fn main() -> Result<(), Error> {
     }
 }
 
-async fn process_incoming_connections(stream: &mut TcpStream, context: &mut Arc<Mutex<Context>>) -> Result<(), Error> {
+async fn process_incoming_connections(stream: &mut TcpStream, context: &mut SharedContext) -> Result<(), Error> {
     loop {
         let mut buffer: [u8; 1024] = [0; 1024];
         let bits_len: usize = stream.read(&mut buffer).await?;

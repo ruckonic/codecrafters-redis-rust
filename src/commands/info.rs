@@ -48,7 +48,6 @@ impl RESPCommand for Info {
         let mut response = "#Replication\r\n".to_string();
 
         // role
-
         let role = &ctx.config.role;
         let role = format!("role:{}\r\n", role.to_string());
 
